@@ -19,12 +19,34 @@ export function fromDateKey(key: string): Date {
   return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
 }
 
-export function newJournalEntry(text: string, date: Date, order: number): JournalEntry {
-  return {
-    id: crypto.randomUUID(),
-    text,
-    date: toDateKey(date),
-    createdAt: new Date().toISOString(),
-    order,
-  };
+export function sortEntries(entries: JournalEntry[]): JournalEntry[] {
+  return [...entries].sort((a, b) => {
+    if (a.date !== b.date) {
+      return b.date.localeCompare(a.date);
+    }
+
+    if (a.order !== b.order) {
+      return b.order - a.order;
+    }
+
+    return b.createdAt.localeCompare(a.createdAt);
+  });
+}
+
+export function groupEntries(entries: JournalEntry[]): {
+  keys: string[];
+  groups: Record<string, JournalEntry[]>;
+} {
+  const groups: Record<string, JournalEntry[]> = {};
+  const sorted = sortEntries(entries);
+
+  for (const entry of sorted) {
+    if (!groups[entry.date]) {
+      groups[entry.date] = [];
+    }
+
+    groups[entry.date].push(entry);
+  }
+
+  return { keys: Object.keys(groups), groups };
 }
