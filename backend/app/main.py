@@ -1,76 +1,110 @@
 from __future__ import annotations
 
-import json
 import os
-from datetime import datetime, timedelta
-from pathlib import Path
-from typing import Any
+from datetime import date, datetime, timedelta, timezone
 from uuid import uuid4
 
+import psycopg
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from psycopg.rows import dict_row
 from pydantic import BaseModel, Field, field_validator
 
-ROOT_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = ROOT_DIR / "data"
-DATA_FILE = DATA_DIR / "entries.json"
+DATABASE_URL = os.getenv("DATABASE_URL", "")
 
 
-def now_iso() -> str:
-    return datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+def now_utc() -> datetime:
+    return datetime.now(timezone.utc)
 
 
-def seed_entries() -> list[dict[str, Any]]:
-    yesterday = (datetime.utcnow() - timedelta(days=1)).date().isoformat()
-    created = now_iso()
-
-    return [
-        {
-            "id": str(uuid4()),
-            "text": "Journal entries are small and explain one thing you did",
-            "date": yesterday,
-            "createdAt": created,
-            "order": 1,
-        },
-        {
-            "id": str(uuid4()),
-            "text": "Try creating one yourself",
-            "date": yesterday,
-            "createdAt": created,
-            "order": 0,
-        },
-    ]
+def created_at_to_iso(value: datetime) -> str:
+    return value.astimezone(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
-def sort_entries(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    return sorted(
-        entries,
-        key=lambda entry: (entry["date"], entry["order"], entry["createdAt"]),
-        reverse=True,
+def row_to_entry(row: dict) -> "JournalEntry":
+    return JournalEntry(
+        id=str(row["id"]),
+        text=row["text"],
+        date=row["entry_date"].isoformat(),
+        createdAt=created_at_to_iso(row["created_at"]),
+        order=row["entry_order"],
     )
 
 
-def load_entries() -> list[dict[str, Any]]:
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
+def require_database_url() -> str:
+    if not DATABASE_URL:
+        raise RuntimeError("DATABASE_URL is required. Set it to your Neon connection string.")
 
-    if not DATA_FILE.exists():
-        initial = seed_entries()
-        save_entries(initial)
-        return initial
-
-    with DATA_FILE.open("r", encoding="utf-8") as file:
-        data = json.load(file)
-
-    if not isinstance(data, list):
-        raise RuntimeError("entries.json must contain a list")
-
-    return data
+    return DATABASE_URL
 
 
-def save_entries(entries: list[dict[str, Any]]) -> None:
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-    with DATA_FILE.open("w", encoding="utf-8") as file:
-        json.dump(entries, file, indent=2)
+def connect_db() -> psycopg.Connection:
+    return psycopg.connect(require_database_url(), row_factory=dict_row)
+
+
+def initialize_schema() -> None:
+    with connect_db() as connection, connection.cursor() as cursor:
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS journal_entries (
+                id UUID PRIMARY KEY,
+                text VARCHAR(140) NOT NULL,
+                entry_date DATE NOT NULL,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                entry_order INTEGER NOT NULL CHECK (entry_order >= 0)
+            )
+            """
+        )
+        cursor.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_journal_entries_date_order_created
+            ON journal_entries (entry_date DESC, entry_order DESC, created_at DESC)
+            """
+        )
+
+
+def seed_if_empty() -> None:
+    with connect_db() as connection, connection.cursor() as cursor:
+        cursor.execute("SELECT COUNT(*) AS count FROM journal_entries")
+        count = int(cursor.fetchone()["count"])
+
+        if count > 0:
+            return
+
+        yesterday = date.today() - timedelta(days=1)
+        created_at = now_utc()
+        seed_rows = [
+            (
+                uuid4(),
+                "Journal entries are small and explain one thing you did",
+                yesterday,
+                created_at,
+                1,
+            ),
+            (uuid4(), "Try creating one yourself", yesterday, created_at, 0),
+        ]
+
+        cursor.executemany(
+            """
+            INSERT INTO journal_entries (id, text, entry_date, created_at, entry_order)
+            VALUES (%s, %s, %s, %s, %s)
+            """,
+            seed_rows,
+        )
+
+
+def fetch_all_entries() -> list["JournalEntry"]:
+    with connect_db() as connection, connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT id, text, entry_date, created_at, entry_order
+            FROM journal_entries
+            ORDER BY entry_date DESC, entry_order DESC, created_at DESC
+            """
+        )
+        rows = cursor.fetchall()
+
+    return [row_to_entry(row) for row in rows]
 
 
 class JournalEntry(BaseModel):
@@ -106,7 +140,7 @@ class LogsResponse(BaseModel):
     items: list[JournalEntry]
 
 
-app = FastAPI(title="JournalRightNow API", version="0.1.0")
+app = FastAPI(title="JournalRightNow API", version="0.2.0")
 
 cors_origins = os.getenv("CORS_ORIGINS")
 allowed_origins = (
@@ -124,43 +158,58 @@ app.add_middleware(
 )
 
 
+@app.on_event("startup")
+def startup() -> None:
+    initialize_schema()
+    seed_if_empty()
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
+    with connect_db() as connection, connection.cursor() as cursor:
+        cursor.execute("SELECT 1")
+
     return {"status": "ok"}
 
 
 @app.get("/api/logs", response_model=LogsResponse)
 def list_logs() -> LogsResponse:
-    entries = sort_entries(load_entries())
-    return LogsResponse(items=[JournalEntry(**entry) for entry in entries])
+    return LogsResponse(items=fetch_all_entries())
 
 
 @app.post("/api/logs", response_model=JournalEntry)
 def create_log(payload: CreateJournalEntry) -> JournalEntry:
-    entries = load_entries()
-    order = sum(1 for entry in entries if entry["date"] == payload.date)
+    with connect_db() as connection, connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT COALESCE(MAX(entry_order), -1) AS max_order FROM journal_entries WHERE entry_date = %s",
+            (payload.date,),
+        )
+        max_order = int(cursor.fetchone()["max_order"])
+        next_order = max_order + 1
 
-    entry = {
-        "id": str(uuid4()),
-        "text": payload.text.strip(),
-        "date": payload.date,
-        "createdAt": now_iso(),
-        "order": order,
-    }
+        created_at = now_utc()
+        entry_id = uuid4()
 
-    entries.append(entry)
-    save_entries(entries)
+        cursor.execute(
+            """
+            INSERT INTO journal_entries (id, text, entry_date, created_at, entry_order)
+            VALUES (%s, %s, %s, %s, %s)
+            RETURNING id, text, entry_date, created_at, entry_order
+            """,
+            (entry_id, payload.text.strip(), payload.date, created_at, next_order),
+        )
+        row = cursor.fetchone()
 
-    return JournalEntry(**entry)
+    return row_to_entry(row)
 
 
 @app.delete("/api/logs/{entry_id}", response_model=LogsResponse)
 def delete_log(entry_id: str) -> LogsResponse:
-    entries = load_entries()
-    updated = [entry for entry in entries if entry["id"] != entry_id]
+    with connect_db() as connection, connection.cursor() as cursor:
+        cursor.execute("DELETE FROM journal_entries WHERE id = %s RETURNING id", (entry_id,))
+        deleted = cursor.fetchone()
 
-    if len(updated) == len(entries):
+    if deleted is None:
         raise HTTPException(status_code=404, detail="Entry not found")
 
-    save_entries(updated)
-    return LogsResponse(items=[JournalEntry(**entry) for entry in sort_entries(updated)])
+    return LogsResponse(items=fetch_all_entries())
