@@ -50,3 +50,37 @@ export function groupEntries(entries: JournalEntry[]): {
 
   return { keys: Object.keys(groups), groups };
 }
+
+export function exportAsMarkdown(entries: JournalEntry[]): string {
+  const { keys, groups } = groupEntries(entries);
+
+  let content = `# Chronicle journal\nExported from JournalRightNow on ${format(
+    new Date(),
+    "MMMM do, yyyy"
+  )}\n`;
+
+  for (const key of keys) {
+    content += `\n## ${format(new Date(`${key}T00:00:00`), "MMMM do, yyyy")}\n\n`;
+
+    for (const entry of groups[key]) {
+      content += `- ${entry.text}\n`;
+    }
+  }
+
+  return content;
+}
+
+export function exportAsJson(entries: JournalEntry[]): string {
+  const { keys, groups } = groupEntries(entries);
+  const payload: Record<string, { text: string; date: string; createdAt: string }[]> = {};
+
+  for (const key of keys) {
+    payload[key] = groups[key].map((entry) => ({
+      text: entry.text,
+      date: entry.date,
+      createdAt: entry.createdAt,
+    }));
+  }
+
+  return JSON.stringify(payload, null, 2);
+}

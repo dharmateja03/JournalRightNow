@@ -1,13 +1,21 @@
 "use client";
 
 import { format } from "date-fns";
-import { Trash2 } from "lucide-react";
+import { Download, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { JournalEditor } from "@/components/journal/journal-editor";
 import { Button } from "@/components/ui/button";
 import { createLog, deleteLog, fetchLogs } from "@/lib/api";
-import { groupEntries, sortEntries, toDateKey, type JournalEntry } from "@/lib/journal";
+import { downloadTextFile } from "@/lib/download";
+import {
+  exportAsJson,
+  exportAsMarkdown,
+  groupEntries,
+  sortEntries,
+  toDateKey,
+  type JournalEntry,
+} from "@/lib/journal";
 
 const EMPTY_HINT = "Journal entries are small and explain one thing you did.";
 
@@ -79,12 +87,47 @@ export function JournalWorkspace() {
     }
   };
 
+  const onExportMarkdown = () => {
+    downloadTextFile("journalrightnow.md", exportAsMarkdown(entries), "text/markdown;charset=utf-8");
+  };
+
+  const onExportJson = () => {
+    downloadTextFile("journalrightnow.json", exportAsJson(entries), "application/json;charset=utf-8");
+  };
+
   return (
     <section className="grid gap-4 lg:grid-cols-[1fr_24rem]">
       <div className="border-2 border-border bg-card p-4 sm:p-6">
-        <div className="border-b-2 border-border pb-4">
-          <p className="text-accent">phi (..)</p>
-          <p className="mt-2 text-sm text-muted-foreground">Jot down a highlight of the day.</p>
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b-2 border-border pb-4">
+          <div>
+            <p className="text-accent">phi (..)</p>
+            <p className="mt-2 text-sm text-muted-foreground">Jot down a highlight of the day.</p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 px-2 text-xs"
+              onClick={onExportMarkdown}
+              disabled={loading || entries.length === 0}
+            >
+              <Download className="size-3.5" />
+              markdown
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 px-2 text-xs"
+              onClick={onExportJson}
+              disabled={loading || entries.length === 0}
+            >
+              <Download className="size-3.5" />
+              json
+            </Button>
+          </div>
         </div>
 
         {error ? (
