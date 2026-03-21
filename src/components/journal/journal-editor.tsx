@@ -14,8 +14,9 @@ interface JournalEditorProps {
   setSelectedDate: (date: Date) => void;
   text: string;
   setText: (value: string) => void;
-  onSubmit: () => void;
+  onSubmit: () => Promise<void>;
   highlightedDates: Date[];
+  submitting: boolean;
 }
 
 export function JournalEditor({
@@ -25,6 +26,7 @@ export function JournalEditor({
   setText,
   onSubmit,
   highlightedDates,
+  submitting,
 }: JournalEditorProps) {
   const textareaLabel = `What did you do on ${format(selectedDate, "EEEE, MMMM do")}?`;
 
@@ -45,7 +47,7 @@ export function JournalEditor({
           onKeyDown={(event) => {
             if (event.key === "Enter" && !event.shiftKey) {
               event.preventDefault();
-              onSubmit();
+              void onSubmit();
             }
           }}
         />
@@ -76,7 +78,9 @@ export function JournalEditor({
           <p className="ml-auto text-xs text-muted-foreground">
             {text.length} / {TEXT_LIMIT}
           </p>
-          <Button onClick={onSubmit}>Submit</Button>
+          <Button onClick={() => void onSubmit()} disabled={submitting}>
+            {submitting ? "Saving..." : "Submit"}
+          </Button>
         </div>
 
         <div className="mt-3 hidden sm:block">
