@@ -37,6 +37,24 @@ npm run dev
 
 Open `http://localhost:3000`.
 
+## Deploy on Railway
+
+Create two Railway services from this repo.
+
+1. Frontend service:
+Set service root to `/` (repo root). Railway will use [`railway.toml`](./railway.toml).
+Set `NEXT_PUBLIC_API_BASE_URL` to your deployed backend URL (for example, `https://journal-api.up.railway.app`).
+
+2. Backend service:
+Set service root to `/backend`. Railway will use [`backend/railway.toml`](./backend/railway.toml).
+Set:
+`DATABASE_URL=postgresql://...`
+`CORS_ORIGINS=https://<your-frontend-domain>`
+
+After both services are deployed, confirm:
+- Frontend loads without API errors.
+- Backend health endpoint responds at `/health`.
+
 ## Backend API
 
 - `GET /health`
