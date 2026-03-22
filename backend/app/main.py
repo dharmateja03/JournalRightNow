@@ -48,11 +48,17 @@ def initialize_schema() -> None:
             """
             CREATE TABLE IF NOT EXISTS journal_entries (
                 id UUID PRIMARY KEY,
-                text VARCHAR(140) NOT NULL,
+                text TEXT NOT NULL,
                 entry_date DATE NOT NULL,
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 entry_order INTEGER NOT NULL CHECK (entry_order >= 0)
             )
+            """
+        )
+        cursor.execute(
+            """
+            ALTER TABLE journal_entries
+            ALTER COLUMN text TYPE TEXT
             """
         )
         cursor.execute(
@@ -116,7 +122,7 @@ class JournalEntry(BaseModel):
 
 
 class CreateJournalEntry(BaseModel):
-    text: str = Field(min_length=1, max_length=140)
+    text: str = Field(min_length=1)
     date: str
 
     @field_validator("text")

@@ -17,7 +17,7 @@ import {
   type JournalEntry,
 } from "@/lib/journal";
 
-const EMPTY_HINT = "Journal entries are small and explain one thing you did.";
+const EMPTY_HINT = "No entries yet. Add your first journal note.";
 
 export function JournalWorkspace() {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
@@ -97,7 +97,18 @@ export function JournalWorkspace() {
 
   return (
     <section className="grid gap-4 lg:grid-cols-[1fr_24rem]">
-      <div className="border-2 border-border bg-card p-4 sm:p-6">
+      <JournalEditor
+        className="order-1 lg:order-2"
+        selectedDate={selectedDate}
+        setSelectedDate={setSelectedDate}
+        text={text}
+        setText={setText}
+        onSubmit={onSubmit}
+        highlightedDates={highlightedDates}
+        submitting={submitting}
+      />
+
+      <div className="order-2 border-2 border-border bg-card p-4 sm:p-6 lg:order-1">
         <div className="flex flex-wrap items-start justify-between gap-3 border-b-2 border-border pb-4">
           <div>
             <p className="text-accent">phi (..)</p>
@@ -176,16 +187,6 @@ export function JournalWorkspace() {
           )}
         </div>
       </div>
-
-      <JournalEditor
-        selectedDate={selectedDate}
-        setSelectedDate={setSelectedDate}
-        text={text}
-        setText={setText}
-        onSubmit={onSubmit}
-        highlightedDates={highlightedDates}
-        submitting={submitting}
-      />
     </section>
   );
 }

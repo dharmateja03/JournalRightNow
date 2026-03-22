@@ -8,8 +8,6 @@ export interface JournalEntry {
   order: number;
 }
 
-export const TEXT_LIMIT = 140;
-
 export function toDateKey(date: Date): string {
   return format(date, "yyyy-MM-dd");
 }
@@ -54,7 +52,7 @@ export function groupEntries(entries: JournalEntry[]): {
 export function exportAsMarkdown(entries: JournalEntry[]): string {
   const { keys, groups } = groupEntries(entries);
 
-  let content = `# Chronicle journal\nExported from JournalRightNow on ${format(
+  let content = `# JournalRightNow journal\nExported from JournalRightNow on ${format(
     new Date(),
     "MMMM do, yyyy"
   )}\n`;

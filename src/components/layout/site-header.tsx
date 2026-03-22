@@ -7,7 +7,7 @@ export function SiteHeader() {
         <Link
           href="/"
           className="text-3xl font-serif leading-none text-foreground transition-colors hover:text-accent"
-          aria-label="Chronicle home"
+          aria-label="JournalRightNow home"
         >
           •
         </Link>
@@ -21,6 +21,9 @@ export function SiteHeader() {
           </Link>
           <Link className="px-3 py-2 transition-colors hover:bg-accent hover:text-accent-foreground" href="/profile">
             profile
+          </Link>
+          <Link className="px-3 py-2 transition-colors hover:bg-accent hover:text-accent-foreground" href="/login">
+            login
           </Link>
         </nav>
       </div>

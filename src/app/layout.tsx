@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "JournalRightNow",
-  description: "No-nonsense journaling in a Chronicle-inspired interface.",
+  description: "No-nonsense journaling with a fast and minimal interface.",
 };
 
 export default function RootLayout({

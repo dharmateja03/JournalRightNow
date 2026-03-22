@@ -11,12 +11,12 @@ const features = [
     text: "Minimal interface that stays out of your way.",
   },
   {
-    title: "No account needed",
-    text: "Use local journals without signing in. Data can live entirely in your browser.",
+    title: "Simple login",
+    text: "Sign in quickly and jump straight into writing.",
   },
   {
-    title: "Use anywhere",
-    text: "Add account sync later when you want multi-device access.",
+    title: "Date-focused",
+    text: "Pick any day from the calendar and keep entries organized automatically.",
   },
   {
     title: "Privacy first",
@@ -42,7 +42,7 @@ export default function HomePage() {
           <Badge className="w-fit border-accent/60 text-accent">No-Nonsense Journaling</Badge>
 
           <h1 className="max-w-2xl font-serif text-4xl leading-[1.05] tracking-tight sm:text-6xl">
-            Chronicle-style daily highlights without the fluff.
+            Daily highlights without the fluff.
           </h1>
 
           <p className="max-w-2xl text-base text-muted-foreground sm:text-lg">
@@ -51,8 +51,8 @@ export default function HomePage() {
           </p>
 
           <div>
-            <Link href="/journal" className={buttonVariants({ className: "px-5 py-2.5 text-base" })}>
-              Start Journaling
+            <Link href="/login" className={buttonVariants({ className: "px-5 py-2.5 text-base" })}>
+              Log In
             </Link>
           </div>
         </div>
