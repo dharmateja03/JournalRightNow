@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
-import { TEXT_LIMIT } from "@/lib/journal";
+import { cn } from "@/lib/utils";
 
 interface JournalEditorProps {
+  className?: string;
   selectedDate: Date;
   setSelectedDate: (date: Date) => void;
   text: string;
@@ -20,6 +21,7 @@ interface JournalEditorProps {
 }
 
 export function JournalEditor({
+  className,
   selectedDate,
   setSelectedDate,
   text,
@@ -31,36 +33,17 @@ export function JournalEditor({
   const textareaLabel = `What did you do on ${format(selectedDate, "EEEE, MMMM do")}?`;
 
   return (
-    <aside className="w-full lg:sticky lg:top-24 lg:max-w-sm">
+    <aside className={cn("w-full lg:sticky lg:top-24 lg:max-w-sm lg:self-start", className)}>
       <div className="border-2 border-border bg-card p-4">
-        <Textarea
-          aria-label={textareaLabel}
-          value={text}
-          placeholder={textareaLabel}
-          className="min-h-28 text-base"
-          onChange={(event) => {
-            const nextValue = event.target.value;
-            if (nextValue.length <= TEXT_LIMIT) {
-              setText(nextValue);
-            }
-          }}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" && !event.shiftKey) {
-              event.preventDefault();
-              void onSubmit();
-            }
-          }}
-        />
-
-        <div className="mt-3 flex items-center justify-between gap-3">
+        <div className="mb-3 sm:hidden">
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="h-9 px-2 text-xs sm:hidden">
+              <Button variant="outline" className="h-9 w-full justify-start px-3 text-xs">
                 <CalendarDays className="size-4" />
-                {format(selectedDate, "MMM dd, yyyy")}
+                {format(selectedDate, "EEEE, MMM dd, yyyy")}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0 sm:hidden" align="start">
+            <PopoverContent className="w-auto p-0" align="start">
               <Calendar
                 mode="single"
                 selected={selectedDate}
@@ -74,16 +57,9 @@ export function JournalEditor({
               />
             </PopoverContent>
           </Popover>
-
-          <p className="ml-auto text-xs text-muted-foreground">
-            {text.length} / {TEXT_LIMIT}
-          </p>
-          <Button onClick={() => void onSubmit()} disabled={submitting}>
-            {submitting ? "Saving..." : "Submit"}
-          </Button>
         </div>
 
-        <div className="mt-3 hidden sm:block">
+        <div className="mb-3 hidden sm:block">
           <Calendar
             mode="single"
             selected={selectedDate}
@@ -95,6 +71,31 @@ export function JournalEditor({
             modifiers={{ highlight: highlightedDates }}
             modifiersClassNames={{ highlight: "font-semibold text-accent" }}
           />
+        </div>
+
+        <p className="mb-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">
+          {format(selectedDate, "EEEE, MMMM do")}
+        </p>
+
+        <Textarea
+          aria-label={textareaLabel}
+          value={text}
+          placeholder={textareaLabel}
+          className="min-h-28 text-base"
+          onChange={(event) => setText(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !event.shiftKey) {
+              event.preventDefault();
+              void onSubmit();
+            }
+          }}
+        />
+
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <p className="text-xs text-muted-foreground">{text.length} characters</p>
+          <Button onClick={() => void onSubmit()} disabled={submitting}>
+            {submitting ? "Saving..." : "Save entry"}
+          </Button>
         </div>
       </div>
     </aside>

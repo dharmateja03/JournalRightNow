@@ -1,6 +1,6 @@
 # JournalRightNow
 
-Chronicle-inspired no-nonsense journaling with a dark-only shadcn UI, FastAPI backend, and Neon Postgres persistence.
+No-nonsense journaling with a dark-only shadcn UI, FastAPI backend, and Neon Postgres persistence.
 
 ## Stack
 
